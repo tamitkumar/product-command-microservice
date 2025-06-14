@@ -15,8 +15,8 @@ public enum ErrorCode {
     ERR010( "ERR.010", "Database connection error."),
     HTTP_CODE_500( "500", "Error when processing the request.");
 
-    private String errorCode;
-    private String errorMessage;
+    private final String errorCode;
+    private final String errorMessage;
 
     ErrorCode(String code, String message) {
         this.errorCode = code;
