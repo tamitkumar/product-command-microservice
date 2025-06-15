@@ -1,13 +1,14 @@
 package com.tech.brain.service.impl;
 
+import com.tech.brain.entity.OutboxEntity;
 import com.tech.brain.entity.ProductEntity;
 import com.tech.brain.exception.ErrorCode;
 import com.tech.brain.exception.ErrorSeverity;
 import com.tech.brain.exception.CommandException;
 import com.tech.brain.model.Product;
 import com.tech.brain.model.ProductEvent;
-import com.tech.brain.publisher.EventPublisher;
 import com.tech.brain.repository.CommandRepository;
+import com.tech.brain.repository.OutboxRepository;
 import com.tech.brain.service.CommandService;
 import com.tech.brain.utils.JSONUtils;
 import jakarta.transaction.Transactional;
@@ -15,7 +16,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Transactional
@@ -23,12 +32,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CommandServiceImpl implements CommandService {
 
     private final CommandRepository commandRepository;
-    private final EventPublisher eventPublisher;
+    private final OutboxRepository outboxRepository;
     private final JSONUtils jsonUtils;
 
-    public CommandServiceImpl(CommandRepository queryRepository, EventPublisher eventPublisher, JSONUtils jsonUtils) {
+    public CommandServiceImpl(CommandRepository queryRepository, OutboxRepository outboxRepository, JSONUtils jsonUtils) {
         this.commandRepository = queryRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxRepository = outboxRepository;
         this.jsonUtils = jsonUtils;
     }
 
@@ -48,7 +57,8 @@ public class CommandServiceImpl implements CommandService {
         });
         BeanUtils.copyProperties(products[0], product);
         ProductEvent event = new ProductEvent("CREATE_EVENT", product);
-        eventPublisher.publish(event);
+        outboxRepository.save(OutboxEntity.builder().aggregateId(product.getProductCode()).payload(jsonUtils.javaToJSON(event))
+                .createdAt(Instant.now()).processed(false).build());
         return product;
     }
 
@@ -67,7 +77,8 @@ public class CommandServiceImpl implements CommandService {
         });
         BeanUtils.copyProperties(products[0], product);
         ProductEvent event = new ProductEvent("UPDATE_EVENT", product);
-        eventPublisher.publish(event);
+        outboxRepository.save(OutboxEntity.builder().aggregateId(product.getProductCode()).payload(jsonUtils.javaToJSON(event))
+                .createdAt(Instant.now()).processed(false).build());
         return product;
     }
 
@@ -81,7 +92,8 @@ public class CommandServiceImpl implements CommandService {
             BeanUtils.copyProperties(existingProduct, product);
             ProductEvent event = new ProductEvent("DELETE_EVENT", product);
             commandRepository.deleteById(id);
-            eventPublisher.publish(event);
+            outboxRepository.save(OutboxEntity.builder().aggregateId(product.getProductCode()).payload(jsonUtils.javaToJSON(event))
+                    .createdAt(Instant.now()).processed(false).build());
             response.set("Deleted product " + id);
         }, ()-> {
             log.info("Product id=[{}] not found", id);
@@ -91,5 +103,31 @@ public class CommandServiceImpl implements CommandService {
         return response.get();
     }
 
+    public String startFullLoad() {
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+        LocalTime start = LocalTime.now();
+        log.info("Sync started at: {}", start.format(timeFormatter));
+        List<ProductEntity> commands = commandRepository.findAll();
+        Map<String, OutboxEntity> outboxMap = outboxRepository.findAll().stream()
+                .collect(Collectors.toMap(OutboxEntity::getAggregateId, Function.identity()));
+        List<OutboxEntity> newEntries = new ArrayList<>();
+        for (ProductEntity command : commands) {
+            if (!outboxMap.containsKey(command.getProductCode())) {
+                Product product = new Product();
+                BeanUtils.copyProperties(command, product);
+                ProductEvent event = new ProductEvent("CREATE_EVENT", product);
+                newEntries.add(OutboxEntity.builder().aggregateId(command.getProductCode()).payload(jsonUtils.javaToJSON(event))
+                        .createdAt(Instant.now()).processed(false).build());
+            }
+        }
+        if (!newEntries.isEmpty()) {
+            outboxRepository.saveAll(newEntries);
+        }
+        LocalTime end = LocalTime.now();
+        log.info("FullLoad ended at: {}", end.format(timeFormatter));
+
+        long durationMs = java.time.Duration.between(start, end).toMillis();
+        return "Sync duration: " + durationMs + " ms";
+    }
 
 }

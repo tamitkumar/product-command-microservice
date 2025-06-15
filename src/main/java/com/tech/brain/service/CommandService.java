@@ -18,6 +18,8 @@ public interface CommandService {
 
     String deleteProduct(Long id);
 
+    String startFullLoad();
+
     default void copyNonNullProperties(Object dto, Object entity) {
         BeanUtils.copyProperties(dto, entity, getNullPropertyName(dto));
     }

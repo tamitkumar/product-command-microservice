@@ -35,8 +35,7 @@ public class CommandController {
                                           "productCode": "PROD123",
                                           "name": "Gaming Mouse",
                                           "description": "Ergonomic wireless gaming mouse",
-                                          "price": 1499.99,
-                                          "version": 1
+                                          "price": 1499.99
                                         }
                                         """
                             )
@@ -67,8 +66,7 @@ public class CommandController {
                                           "productCode": "PROD123",
                                           "name": "Updated Gaming Mouse",
                                           "description": "Updated ergonomic gaming mouse",
-                                          "price": 1399.99,
-                                          "version": 2
+                                          "price": 1399.99
                                         }
                                         """
                             )
@@ -94,5 +92,10 @@ public class CommandController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable long id){
         return ResponseEntity.ok(commandService.deleteProduct(id));
+    }
+
+    @GetMapping("/fullLoad")
+    public ResponseEntity<String> fullLoad() {
+        return ResponseEntity.ok(commandService.startFullLoad());
     }
 }
