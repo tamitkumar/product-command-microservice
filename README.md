@@ -34,7 +34,7 @@ ProductEvent                         Java object containing eventType and produc
 ````
 This is 1st service Producer:
 
-Sceduler: second Service is https://github.com/tamitkumar/order-poller
+Sceduler: second Service is https://github.com/tamitkumar/product-command-microservice/tree/master/order-poller
 Consumer: third Service is https://github.com/tamitkumar/product-query-microservices
 
 ````
