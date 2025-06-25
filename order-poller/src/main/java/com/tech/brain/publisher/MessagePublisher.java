@@ -28,7 +28,7 @@ public class MessagePublisher {
 
     public void publish(ProductEvent message) {
         log.info("Publishing: [{}]", jsonUtils.javaToJSON(message));
-        CompletableFuture<SendResult<String, Object>> future = this.kafkaTemplate.send(topicName, message.getProduct().getProductCode(), message);
+        CompletableFuture<SendResult<String, Object>> future = this.kafkaTemplate.send(topicName, message.getEventType(), message);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("Sent message=[{}] with offset=[{}]", message, result.getRecordMetadata().offset());
