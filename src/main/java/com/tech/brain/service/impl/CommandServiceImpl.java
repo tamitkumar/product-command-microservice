@@ -108,8 +108,10 @@ public class CommandServiceImpl implements CommandService {
         LocalTime start = LocalTime.now();
         log.info("Sync started at: {}", start.format(timeFormatter));
         List<ProductEntity> commands = commandRepository.findAll();
-        Map<String, OutboxEntity> outboxMap = outboxRepository.findAll().stream()
-                .collect(Collectors.toMap(OutboxEntity::getAggregateId, Function.identity()));
+        Map<String, OutboxEntity> outboxMap = outboxRepository.findAll()
+                .stream().collect(Collectors
+                        .toMap(OutboxEntity::getAggregateId, Function.identity(), (existing, duplicate) ->
+                        existing.getCreatedAt().isAfter(duplicate.getCreatedAt()) ? existing : duplicate));
         List<OutboxEntity> newEntries = new ArrayList<>();
         for (ProductEntity command : commands) {
             if (!outboxMap.containsKey(command.getProductCode())) {

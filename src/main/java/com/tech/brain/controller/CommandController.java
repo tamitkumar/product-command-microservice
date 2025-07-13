@@ -1,6 +1,7 @@
 package com.tech.brain.controller;
 
 import com.tech.brain.model.Product;
+import com.tech.brain.scope.JWTScope;
 import com.tech.brain.service.CommandService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -47,6 +48,7 @@ public class CommandController {
             @ApiResponse(responseCode = "400", description = "Invalid input")
     })
     @PostMapping("/add")
+    @JWTScope("create")
     public ResponseEntity<Product> createProduct(@RequestBody Product product){
         return ResponseEntity.ok().body(commandService.createProduct(product));
     }
@@ -78,6 +80,7 @@ public class CommandController {
             }
     )
     @PutMapping("/update/{id}")
+    @JWTScope("update")
     public ResponseEntity<Product> updateProduct(@PathVariable long id, @RequestBody Product product){
         return ResponseEntity.accepted().body(commandService.updateProduct(id, product));
     }
@@ -90,11 +93,13 @@ public class CommandController {
             }
     )
     @DeleteMapping("/delete/{id}")
+    @JWTScope("write")
     public ResponseEntity<String> deleteProduct(@PathVariable long id){
         return ResponseEntity.ok(commandService.deleteProduct(id));
     }
 
     @GetMapping("/fullLoad")
+    @JWTScope("read")
     public ResponseEntity<String> fullLoad() {
         return ResponseEntity.ok(commandService.startFullLoad());
     }
